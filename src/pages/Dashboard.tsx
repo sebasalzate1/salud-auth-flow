@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { Heart, Activity, User, Calendar, Settings, LogOut, Shield, Stethoscope, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,21 +40,21 @@ const Dashboard: React.FC = () => {
     switch (rol) {
       case 'medico':
         return [
-          { icon: Calendar, title: 'Gestión de Citas', description: 'Ver y gestionar tu agenda médica' },
-          { icon: User, title: 'Historias Clínicas', description: 'Acceso a historias de pacientes' },
-          { icon: Settings, title: 'Configuración Médica', description: 'Ajustes específicos para médicos' }
+          { icon: Calendar, title: 'Gestión de Citas', description: 'Ver y gestionar tu agenda médica', link: null },
+          { icon: User, title: 'Historias Clínicas', description: 'Acceso a historias de pacientes', link: null },
+          { icon: Settings, title: 'Configuración Médica', description: 'Ajustes específicos para médicos', link: null }
         ];
       case 'coordinador':
         return [
-          { icon: Users, title: 'Gestión de Personal', description: 'Administrar médicos y personal' },
-          { icon: Calendar, title: 'Programación General', description: 'Coordinar horarios y disponibilidad' },
-          { icon: Shield, title: 'Panel Administrativo', description: 'Acceso a funciones administrativas' }
+          { icon: Users, title: 'Gestión de Personal', description: 'Administrar médicos y personal', link: null },
+          { icon: Calendar, title: 'Programación General', description: 'Coordinar horarios y disponibilidad', link: null },
+          { icon: Shield, title: 'Panel Administrativo', description: 'Acceso a funciones administrativas', link: null }
         ];
       default:
         return [
-          { icon: Calendar, title: 'Mis Citas', description: 'Agendar y ver mis citas médicas' },
-          { icon: User, title: 'Mi Perfil', description: 'Actualizar información personal' },
-          { icon: Heart, title: 'Mi Salud', description: 'Seguimiento de mi estado de salud' }
+          { icon: Calendar, title: 'Mis Citas', description: 'Agendar y ver mis citas médicas', link: '/appointments' },
+          { icon: User, title: 'Mi Perfil', description: 'Actualizar información personal', link: null },
+          { icon: Heart, title: 'Mi Salud', description: 'Seguimiento de mi estado de salud', link: null }
         ];
     }
   };
@@ -148,22 +148,42 @@ const Dashboard: React.FC = () => {
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature, index) => (
-            <Card key={index} className="shadow-card hover:shadow-medical transition-all duration-300 cursor-pointer group">
-              <CardHeader>
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-primary-light rounded-lg group-hover:bg-gradient-primary transition-all duration-300">
-                    <feature.icon className="h-5 w-5 text-primary group-hover:text-primary-foreground" />
-                  </div>
-                  <CardTitle className="text-lg">{feature.title}</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>{feature.description}</CardDescription>
-                <div className="mt-4 text-sm text-muted-foreground">
-                  Próximamente disponible
-                </div>
-              </CardContent>
-            </Card>
+            <React.Fragment key={index}>
+              {feature.link ? (
+                <Link to={feature.link} className="block">
+                  <Card className="shadow-card hover:shadow-medical transition-all duration-300 cursor-pointer group h-full">
+                    <CardHeader>
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-primary-light rounded-lg group-hover:bg-gradient-primary transition-all duration-300">
+                          <feature.icon className="h-5 w-5 text-primary group-hover:text-primary-foreground" />
+                        </div>
+                        <CardTitle className="text-lg">{feature.title}</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <CardDescription>{feature.description}</CardDescription>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ) : (
+                <Card className="shadow-card hover:shadow-medical transition-all duration-300 cursor-pointer group h-full">
+                  <CardHeader>
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-primary-light rounded-lg group-hover:bg-gradient-primary transition-all duration-300">
+                        <feature.icon className="h-5 w-5 text-primary group-hover:text-primary-foreground" />
+                      </div>
+                      <CardTitle className="text-lg">{feature.title}</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription>{feature.description}</CardDescription>
+                    <div className="mt-4 text-sm text-muted-foreground">
+                      Próximamente disponible
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </React.Fragment>
           ))}
         </div>
 
