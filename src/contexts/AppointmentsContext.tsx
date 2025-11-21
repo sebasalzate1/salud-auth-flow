@@ -1,11 +1,22 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Cita, Sede, Especialidad, Profesional, AppointmentsContextType } from '@/types/appointments';
+import { 
+  Cita, 
+  Sede, 
+  Especialidad, 
+  Profesional, 
+  Recordatorio,
+  PreferenciasNotificacion,
+  AppointmentsContextType 
+} from '@/types/appointments';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { differenceInHours, parseISO } from 'date-fns';
 
 const AppointmentsContext = createContext<AppointmentsContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'citasalud:appointments';
+const RECORDATORIOS_KEY = 'citasalud:recordatorios';
+const PREFS_KEY_PREFIX = 'citasalud:notif-prefs:';
 
 // Mock data
 const SEDES_MOCK: Sede[] = [
@@ -39,9 +50,12 @@ const HORARIOS_BASE = [
 
 export const AppointmentsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [citas, setCitas] = useState<Cita[]>([]);
+  const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([]);
+  const [preferenciasNotificacion, setPreferenciasNotificacion] = useState<PreferenciasNotificacion | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
 
+  // Load citas
   useEffect(() => {
     const savedCitas = localStorage.getItem(STORAGE_KEY);
     if (savedCitas) {
@@ -53,9 +67,40 @@ export const AppointmentsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, []);
 
+  // Load recordatorios
+  useEffect(() => {
+    const savedRecordatorios = localStorage.getItem(RECORDATORIOS_KEY);
+    if (savedRecordatorios) {
+      try {
+        setRecordatorios(JSON.parse(savedRecordatorios));
+      } catch (error) {
+        console.error('Error loading reminders:', error);
+      }
+    }
+  }, []);
+
+  // Load preferences
+  useEffect(() => {
+    if (user) {
+      const savedPrefs = localStorage.getItem(PREFS_KEY_PREFIX + user.id);
+      if (savedPrefs) {
+        try {
+          setPreferenciasNotificacion(JSON.parse(savedPrefs));
+        } catch (error) {
+          console.error('Error loading notification preferences:', error);
+        }
+      }
+    }
+  }, [user]);
+
   const saveCitas = (newCitas: Cita[]) => {
     setCitas(newCitas);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newCitas));
+  };
+
+  const saveRecordatorios = (newRecordatorios: Recordatorio[]) => {
+    setRecordatorios(newRecordatorios);
+    localStorage.setItem(RECORDATORIOS_KEY, JSON.stringify(newRecordatorios));
   };
 
   const agendarCita = async (citaData: Omit<Cita, 'id' | 'estado' | 'fechaCreacion'>): Promise<boolean> => {
@@ -248,15 +293,82 @@ export const AppointmentsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return HORARIOS_BASE.filter(hora => !citasOcupadas.includes(hora));
   };
 
+  const actualizarPreferenciasNotificacion = async (
+    preferencias: Omit<PreferenciasNotificacion, 'userId'>
+  ): Promise<boolean> => {
+    if (!user) return false;
+
+    setIsLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const newPrefs: PreferenciasNotificacion = {
+      userId: user.id,
+      ...preferencias,
+    };
+
+    setPreferenciasNotificacion(newPrefs);
+    localStorage.setItem(PREFS_KEY_PREFIX + user.id, JSON.stringify(newPrefs));
+    setIsLoading(false);
+    return true;
+  };
+
+  const procesarRecordatorios = () => {
+    if (!user) return;
+
+    const now = new Date();
+    const citasProgramadas = citas.filter(
+      c => c.afiliadoId === user.id && c.estado === 'programada'
+    );
+
+    citasProgramadas.forEach(cita => {
+      const citaDateTime = parseISO(`${cita.fecha}T${cita.hora}`);
+      const horasHastaCita = differenceInHours(citaDateTime, now);
+
+      // Si faltan exactamente 24 horas (con margen de 1 hora)
+      if (horasHastaCita >= 23 && horasHastaCita <= 25) {
+        // Verificar si ya existe un recordatorio para esta cita
+        const existeRecordatorio = recordatorios.some(r => r.citaId === cita.id);
+        
+        if (!existeRecordatorio) {
+          const canal = preferenciasNotificacion?.canalPreferido || 'correo';
+          const nuevoRecordatorio: Recordatorio = {
+            id: crypto.randomUUID(),
+            citaId: cita.id,
+            canal,
+            fechaEnvio: new Date().toISOString(),
+            estado: 'exitoso', // Simulamos que se envió exitosamente
+            intentos: 1,
+          };
+
+          saveRecordatorios([...recordatorios, nuevoRecordatorio]);
+        }
+      }
+    });
+  };
+
+  // Procesar recordatorios cada 30 minutos
+  useEffect(() => {
+    procesarRecordatorios();
+    const interval = setInterval(procesarRecordatorios, 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [citas, user, preferenciasNotificacion, recordatorios]);
+
   const value: AppointmentsContextType = {
     citas: user ? citas.filter(c => c.afiliadoId === user.id) : [],
     sedes: SEDES_MOCK,
     especialidades: ESPECIALIDADES_MOCK,
     profesionales: PROFESIONALES_MOCK,
+    recordatorios: user ? recordatorios.filter(r => {
+      const cita = citas.find(c => c.id === r.citaId);
+      return cita && cita.afiliadoId === user.id;
+    }) : [],
+    preferenciasNotificacion,
     agendarCita,
     modificarCita,
     cancelarCita,
     obtenerHorariosDisponibles,
+    actualizarPreferenciasNotificacion,
+    procesarRecordatorios,
     isLoading
   };
 
