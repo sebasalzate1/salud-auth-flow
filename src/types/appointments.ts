@@ -32,10 +32,27 @@ export interface Cita {
   profesionalId: string;
   fecha: string;
   hora: string;
-  estado: 'programada' | 'cancelada' | 'completada';
+  estado: 'programada' | 'cancelada' | 'completada' | 'no_asistio';
   motivoCancelacion?: string;
   fechaCreacion: string;
   fechaModificacion?: string;
+  observaciones?: string;
+}
+
+export interface Recordatorio {
+  id: string;
+  citaId: string;
+  canal: 'correo' | 'sms';
+  fechaEnvio: string;
+  estado: 'exitoso' | 'fallido' | 'pendiente';
+  intentos: number;
+}
+
+export interface PreferenciasNotificacion {
+  userId: string;
+  canalPreferido: 'correo' | 'sms';
+  correo?: string;
+  telefono?: string;
 }
 
 export interface AppointmentsContextType {
@@ -43,10 +60,14 @@ export interface AppointmentsContextType {
   sedes: Sede[];
   especialidades: Especialidad[];
   profesionales: Profesional[];
+  recordatorios: Recordatorio[];
+  preferenciasNotificacion: PreferenciasNotificacion | null;
   agendarCita: (cita: Omit<Cita, 'id' | 'estado' | 'fechaCreacion'>) => Promise<boolean>;
   modificarCita: (citaId: string, nuevaFecha: string, nuevaHora: string) => Promise<boolean>;
   cancelarCita: (citaId: string, motivo: string) => Promise<boolean>;
   obtenerHorariosDisponibles: (profesionalId: string, fecha: string) => string[];
+  actualizarPreferenciasNotificacion: (preferencias: Omit<PreferenciasNotificacion, 'userId'>) => Promise<boolean>;
+  procesarRecordatorios: () => void;
   isLoading: boolean;
 }
 

@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
-import { Heart, Activity, User, Calendar, Settings, LogOut, Shield, Stethoscope, Users } from 'lucide-react';
+import { Heart, Activity, User, Calendar, Settings, LogOut, Shield, Stethoscope, Users, Bell, History as HistoryIcon, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/contexts/AuthContext';
+import AccessibilityPanel from '@/components/accessibility/AccessibilityPanel';
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
+  const [showAccessibility, setShowAccessibility] = useState(false);
 
   // Redirect if not logged in
   if (!user) {
@@ -53,8 +56,11 @@ const Dashboard: React.FC = () => {
       default:
         return [
           { icon: Calendar, title: 'Mis Citas', description: 'Agendar y ver mis citas médicas', link: '/appointments' },
+          { icon: HistoryIcon, title: 'Historial y Dashboard', description: 'Ver historial completo y métricas', link: '/history' },
+          { icon: Bell, title: 'Notificaciones', description: 'Configurar recordatorios de citas', link: '/notifications' },
           { icon: User, title: 'Mi Perfil', description: 'Actualizar información personal', link: null },
-          { icon: Heart, title: 'Mi Salud', description: 'Seguimiento de mi estado de salud', link: null }
+          { icon: Heart, title: 'Mi Salud', description: 'Seguimiento de mi estado de salud', link: null },
+          { icon: Eye, title: 'Accesibilidad', description: 'Ajustar interfaz según tus necesidades', link: 'accessibility' }
         ];
     }
   };
@@ -84,12 +90,37 @@ const Dashboard: React.FC = () => {
                 {user.rol.charAt(0).toUpperCase() + user.rol.slice(1)}
               </Badge>
             </div>
+
+            <Sheet open={showAccessibility} onOpenChange={setShowAccessibility}>
+              <SheetTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  aria-label="Abrir panel de accesibilidad"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Accesibilidad
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Accesibilidad</SheetTitle>
+                  <SheetDescription>
+                    Ajusta la interfaz según tus necesidades
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="mt-6">
+                  <AccessibilityPanel />
+                </div>
+              </SheetContent>
+            </Sheet>
             
             <Button 
               variant="outline" 
               size="sm"
               onClick={logout}
               className="text-muted-foreground hover:text-destructive"
+              aria-label="Cerrar sesión"
             >
               <LogOut className="h-4 w-4 mr-2" />
               Cerrar Sesión
@@ -149,7 +180,32 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature, index) => (
             <React.Fragment key={index}>
-              {feature.link ? (
+              {feature.link === 'accessibility' ? (
+                <Card 
+                  className="shadow-card hover:shadow-medical transition-all duration-300 cursor-pointer group h-full"
+                  onClick={() => setShowAccessibility(true)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      setShowAccessibility(true);
+                    }
+                  }}
+                  aria-label={`Abrir ${feature.title}`}
+                >
+                  <CardHeader>
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-primary-light rounded-lg group-hover:bg-gradient-primary transition-all duration-300">
+                        <feature.icon className="h-5 w-5 text-primary group-hover:text-primary-foreground" />
+                      </div>
+                      <CardTitle className="text-lg">{feature.title}</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription>{feature.description}</CardDescription>
+                  </CardContent>
+                </Card>
+              ) : feature.link ? (
                 <Link to={feature.link} className="block">
                   <Card className="shadow-card hover:shadow-medical transition-all duration-300 cursor-pointer group h-full">
                     <CardHeader>
